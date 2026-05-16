@@ -23,7 +23,16 @@ SummaryBot joins your Discord server, records messages from configured channels,
 
 ## Configure environment variables
 
-Copy `.env.example` → `.env` and fill values:
+Copy **`.env.example`** → **`.env`** and fill values.
+
+For a **test/dev** machine you can start from **`.env.development.example`** (placeholders like `paste_*_here`) and rename:
+
+```bash
+cp .env.development.example .env
+chmod 600 .env
+```
+
+**Secrets:** keep real tokens **only** in **`.env`** (gitignored). Do not commit Discord tokens or PATs even in a private dev repo.
 
 - **`DISCORD_TOKEN`**: Bot token
 - **`DISCORD_CLIENT_ID`**: Application ID (aka client ID)
@@ -70,14 +79,49 @@ npm run register-commands
 docker compose run --rm bot npm run register-commands
 ```
 
-## Run with Docker Compose
+## Run with Docker Compose (single stack)
+
+The stack is **`ollama`** + **`bot`** on one internal network **`summarybot`**. The bot calls Ollama at **`OLLAMA_BASE_URL=http://ollama:11434`** (Docker DNS).
+
+### Production-like (Ollama **not** published to the host)
 
 ```bash
 cd discord-summary-bot
-docker compose up --build
+docker compose up -d --build
 ```
 
-The bot service waits for Docker’s **Ollama healthcheck**, and the bot also retries Ollama readiness on startup (`waitForOllama`).
+### Test/dev (publish Ollama on the host loopback)
+
+Uses **`docker-compose.dev.yml`** so you can run `curl http://127.0.0.1:11434/api/tags` **on the Docker host** (e.g. SSH into TrueNAS). Ollama is still on the same Compose network as the bot.
+
+```bash
+cd discord-summary-bot
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Or via npm scripts:
+
+```bash
+npm run compose:up        # internal Ollama only
+npm run compose:up:dev    # + host port 127.0.0.1:11434
+```
+
+To expose Ollama on all interfaces (LAN-wide), edit **`docker-compose.dev.yml`** and set **`0.0.0.0:11434:11434`** — **only** behind a trusted LAN/firewall.
+
+The bot service waits on Docker’s **Ollama healthcheck** and **`waitForOllama`** at startup.
+
+### TrueNAS / datasets
+
+- Prefer keeping the repo + **`.env`** on a dataset where **`chmod`** works (SSH ownership), or deploy from **GitHub tarball** / **`rsync`** if **`git clone`** fails on a share (see your **`truenas-setup`** notes).
+- Example path: **`/mnt/Storage/Applications/discord-summary-bot`** — run Compose **from that directory** so **`env_file: .env`** resolves.
+
+### Useful commands
+
+```bash
+docker compose exec ollama ollama pull llama3   # or your OLLAMA_MODEL
+docker compose run --rm bot npm run register-commands
+docker compose logs -f --tail=200 bot
+```
 
 ## Local development (without Docker)
 

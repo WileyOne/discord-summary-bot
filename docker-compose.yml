@@ -1,8 +1,17 @@
+# Single stack: Ollama + SummaryBot on one Docker network.
+# Test/dev: merge docker-compose.dev.yml to expose Ollama on the host (see README).
+
+networks:
+  summarybot:
+    driver: bridge
+
 services:
   ollama:
     image: ollama/ollama:latest
+    networks: [summarybot]
     volumes:
       - ollama-data:/root/.ollama
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
@@ -14,6 +23,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    networks: [summarybot]
     depends_on:
       ollama:
         condition: service_healthy

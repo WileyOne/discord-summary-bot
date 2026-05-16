@@ -1,0 +1,11 @@
+# Merge for test/dev: exposes Ollama’s API on the Docker host.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Default bind: loopback only on the NAS/host (safe-ish). To reach Ollama from
+# another machine on your LAN, change to "0.0.0.0:11434:11434" (firewall accordingly).
+
+services:
+  ollama:
+    ports:
+      - "127.0.0.1:11434:11434"
