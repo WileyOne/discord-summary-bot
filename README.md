@@ -2,6 +2,8 @@
 
 SummaryBot joins your Discord server, records messages from configured channels, and generates structured daily summaries using a **local Ollama** model over HTTP. Everything is wired for **Docker Compose** from day one.
 
+**Rebuild / full checklist (Discord IDs, `.env`, Compose, TrueNAS notes):** [`docs/SETUP.md`](docs/SETUP.md).
+
 ## Features
 
 - Tracks messages only in **explicitly configured channels**
@@ -9,6 +11,7 @@ SummaryBot joins your Discord server, records messages from configured channels,
 - Persists raw messages + generated summaries in **SQLite** (`better-sqlite3`)
 - Runs an automatic summary on a **`SUMMARY_CRON` schedule** (`node-cron`, timezone via `TZ`)
 - Supports **`/summarize`** for on-demand runs (posts output to `SUMMARY_CHANNEL_ID`)
+- **`/schedule`** (Manage Server) — view or persist **cron + timezone** for automatic summaries (stored in SQLite; overrides `.env` until cleared)
 
 ## Prerequisites
 

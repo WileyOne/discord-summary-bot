@@ -1,34 +1,42 @@
 import cron from "node-cron";
+import type { ScheduledTask } from "node-cron";
 import type { Client } from "discord.js";
 import type Database from "better-sqlite3";
 
 import type { AppConfig } from "../config.js";
+import { resolveEffectiveConfig } from "../db/scheduleSettings.js";
 import { formatZonedYmd } from "../util/dayRange.js";
 import { summarizeChannelDay } from "../bot/summaryRunner.js";
 
-let started = false;
+let scheduledTask: ScheduledTask | null = null;
 
-export function startDailySummaryCron(input: {
+export function stopDailySummaryCron(): void {
+  if (scheduledTask) {
+    scheduledTask.stop();
+    scheduledTask = null;
+    console.log("[SummaryBot] Stopped daily summary cron.");
+  }
+}
+
+/** Starts or replaces the cron job using DB overrides + `.env` (via {@link resolveEffectiveConfig}). */
+export function startOrRestartDailySummaryCron(input: {
   client: Client;
   db: Database.Database;
   config: AppConfig;
 }): void {
-  if (started) {
-    console.warn("[SummaryBot] Daily summary cron already started; skipping duplicate start.");
-    return;
-  }
-  started = true;
+  stopDailySummaryCron();
 
-  const expression = input.config.summaryCron;
-  const ok = cron.validate(expression);
-  if (!ok) {
+  const effective = resolveEffectiveConfig(input.db, input.config);
+  const expression = effective.summaryCron;
+
+  if (!cron.validate(expression)) {
     console.error(`[SummaryBot] Invalid SUMMARY_CRON expression: ${expression}`);
     return;
   }
 
   let running = false;
 
-  cron.schedule(
+  scheduledTask = cron.schedule(
     expression,
     async () => {
       if (running) {
@@ -38,7 +46,7 @@ export function startDailySummaryCron(input: {
 
       running = true;
       try {
-        const summaryDate = formatZonedYmd(new Date(), input.config.timeZone);
+        const summaryDate = formatZonedYmd(new Date(), effective.timeZone);
         console.log(`[SummaryBot] Cron triggered: summarizing tracked channels for ${summaryDate}`);
 
         for (const channelId of input.config.trackedChannels) {
@@ -46,7 +54,7 @@ export function startDailySummaryCron(input: {
             const result = await summarizeChannelDay({
               client: input.client,
               db: input.db,
-              config: input.config,
+              config: effective,
               trackedChannelId: channelId,
               summaryDate,
               announceErrorsToSummaryChannel: true,
@@ -65,8 +73,10 @@ export function startDailySummaryCron(input: {
         running = false;
       }
     },
-    { timezone: input.config.timeZone },
+    { timezone: effective.timeZone },
   );
 
-  console.log(`[SummaryBot] Scheduled daily summaries with cron="${expression}" timezone="${input.config.timeZone}"`);
+  console.log(
+    `[SummaryBot] Scheduled daily summaries with cron="${expression}" timezone="${effective.timeZone}"`,
+  );
 }

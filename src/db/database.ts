@@ -36,6 +36,13 @@ function migrate(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_summaries_channel_date
       ON summaries (channel_id, summary_date);
+
+    CREATE TABLE IF NOT EXISTS schedule_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      summary_cron TEXT,
+      time_zone TEXT,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
 

@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 
 import type { AppConfig } from "../../config.js";
 import { summarizeChannelDay } from "../summaryRunner.js";
+import { resolveEffectiveConfig } from "../../db/scheduleSettings.js";
 import { formatZonedYmd } from "../../util/dayRange.js";
 
 export async function handleSummarizeCommand(
@@ -26,6 +27,8 @@ export async function handleSummarizeCommand(
     return;
   }
 
+  const effective = resolveEffectiveConfig(ctx.db, ctx.config);
+
   const dateRaw = interaction.options.getString("date");
   let summaryDate: string;
   if (dateRaw) {
@@ -35,7 +38,7 @@ export async function handleSummarizeCommand(
     }
     summaryDate = dateRaw;
   } else {
-    summaryDate = formatZonedYmd(new Date(), ctx.config.timeZone);
+    summaryDate = formatZonedYmd(new Date(), effective.timeZone);
   }
 
   await interaction.deferReply({ ephemeral: true });
@@ -44,7 +47,7 @@ export async function handleSummarizeCommand(
     const result = await summarizeChannelDay({
       client: interaction.client,
       db: ctx.db,
-      config: ctx.config,
+      config: effective,
       trackedChannelId: channelId,
       summaryDate,
       announceErrorsToSummaryChannel: true,

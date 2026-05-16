@@ -7,6 +7,7 @@ import { createDiscordClient } from "./bot/client.js";
 import { handleMessageCreate } from "./bot/events/messageCreate.js";
 import { handleReady } from "./bot/events/ready.js";
 import { handleSummarizeCommand } from "./bot/commands/summarize.js";
+import { handleScheduleCommand } from "./bot/commands/schedule.js";
 function wireDiscordHandlers(client: ReturnType<typeof createDiscordClient>, db: Database.Database, config: AppConfig) {
   client.once("ready", handleReady(client, db, config));
 
@@ -15,9 +16,16 @@ function wireDiscordHandlers(client: ReturnType<typeof createDiscordClient>, db:
   client.on("interactionCreate", async (interaction) => {
     try {
       if (!interaction.isChatInputCommand()) return;
-      if (interaction.commandName !== "summarize") return;
 
-      await handleSummarizeCommand(interaction, { db, config });
+      if (interaction.commandName === "summarize") {
+        await handleSummarizeCommand(interaction, { db, config });
+        return;
+      }
+
+      if (interaction.commandName === "schedule") {
+        await handleScheduleCommand(interaction, { db, config });
+        return;
+      }
     } catch (err) {
       console.error("[SummaryBot] interactionCreate handler error:", err);
       try {
