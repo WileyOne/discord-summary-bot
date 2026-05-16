@@ -166,6 +166,18 @@ chmod 600 .env
 | **`OLLAMA_MODEL`** | e.g. **`llama3`** (pull explicitly below) |
 | **`DB_PATH`** | **`/data/bot.db`** |
 
+### Optional — summarization speed / cost tuning
+
+Unset variables mean **no limit** / **Ollama defaults**.
+
+| Variable | Meaning |
+|----------|---------|
+| **`SUMMARY_MAX_MESSAGES`** | Max messages sent to the model per summary (**latest** kept for that calendar day). |
+| **`SUMMARY_MAX_TRANSCRIPT_CHARS`** | Approximate character budget for the transcript; drops **oldest** messages first. |
+| **`OLLAMA_NUM_PREDICT`** | Maps to Ollama **`num_predict`** — caps completion length (often **large latency win**). Try **`512`–`1024`**. |
+| **`OLLAMA_NUM_CTX`** | Maps to **`num_ctx`** — smaller context can reduce prefill cost (risk of truncating long threads). |
+| **`OLLAMA_OPTIONS`** | JSON object merged into Ollama **`options`** (e.g. **`{"temperature":0.2}`**). **`num_predict`** / **`num_ctx`** from dedicated vars override keys here if both set. |
+
 Shell hygiene (avoid paste accidents):
 
 - Run **`cp`** / **`nano`** / **`chmod`** **one command per line** — don’t paste commented examples after **`cp`** on the same line in **`zsh`**.

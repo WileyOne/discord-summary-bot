@@ -30,7 +30,15 @@ export async function summarizeChannelDay(input: {
   db: Database.Database;
   config: Pick<
     AppConfig,
-    "summaryChannelId" | "timeZone" | "ollamaBaseUrl" | "ollamaModel"
+    | "summaryChannelId"
+    | "timeZone"
+    | "ollamaBaseUrl"
+    | "ollamaModel"
+    | "summaryMaxMessages"
+    | "summaryMaxTranscriptChars"
+    | "ollamaNumPredict"
+    | "ollamaNumCtx"
+    | "ollamaOptionsJson"
   >;
   trackedChannelId: string;
   summaryDate: string;
@@ -58,6 +66,11 @@ export async function summarizeChannelDay(input: {
       channelLabel,
       summaryDate: input.summaryDate,
       messages,
+      summaryMaxMessages: input.config.summaryMaxMessages,
+      summaryMaxTranscriptChars: input.config.summaryMaxTranscriptChars,
+      ollamaNumPredict: input.config.ollamaNumPredict,
+      ollamaNumCtx: input.config.ollamaNumCtx,
+      ollamaOptionsJson: input.config.ollamaOptionsJson,
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);

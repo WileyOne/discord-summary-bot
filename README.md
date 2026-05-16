@@ -47,6 +47,7 @@ chmod 600 .env
 - **`OLLAMA_BASE_URL`**: Default in Compose is `http://ollama:11434`
 - **`OLLAMA_MODEL`**: Example: `llama3`
 - **`DB_PATH`**: Default in Compose-friendly setup is `/data/bot.db`
+- **Optional (latency):** `SUMMARY_MAX_MESSAGES`, `SUMMARY_MAX_TRANSCRIPT_CHARS`, `OLLAMA_NUM_PREDICT`, `OLLAMA_NUM_CTX`, `OLLAMA_OPTIONS` — see [`docs/SETUP.md`](docs/SETUP.md) §5
 
 ## Pull the Ollama model
 

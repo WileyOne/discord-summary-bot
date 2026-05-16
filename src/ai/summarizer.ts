@@ -9,6 +9,74 @@ export type StructuredSummary = {
   openQuestions: string[];
 };
 
+function estimateTranscriptChars(messages: StoredMessage[]): number {
+  let sum = 0;
+  for (const msg of messages) {
+    sum += `[${msg.createdAt}] ${msg.authorUsername}: ${msg.content}`.length + 1;
+  }
+  return sum;
+}
+
+/**
+ * Keeps the latest messages first by count, then drops oldest until under char budget.
+ * Single oversized messages get content clipped.
+ */
+export function truncateMessagesForSummarization(
+  messages: StoredMessage[],
+  maxMessages?: number,
+  maxTranscriptChars?: number,
+): StoredMessage[] {
+  let m = messages;
+  if (maxMessages !== undefined && maxMessages > 0 && m.length > maxMessages) {
+    m = m.slice(-maxMessages);
+  }
+  if (maxTranscriptChars === undefined || maxTranscriptChars <= 0 || m.length === 0) {
+    return m;
+  }
+
+  while (m.length > 1 && estimateTranscriptChars(m) > maxTranscriptChars) {
+    m = m.slice(1);
+  }
+
+  if (m.length === 1 && estimateTranscriptChars(m) > maxTranscriptChars) {
+    const msg = m[0];
+    if (!msg) {
+      return m;
+    }
+    const prefix = `[${msg.createdAt}] ${msg.authorUsername}: `;
+    const overhead = prefix.length + 48;
+    const budget = Math.max(256, maxTranscriptChars - overhead);
+    const c = msg.content;
+    const clipped =
+      c.length <= budget ? c : `…[truncated]\n${c.slice(-budget)}`;
+    const clippedMsg: StoredMessage = {
+      id: msg.id,
+      channelId: msg.channelId,
+      authorUsername: msg.authorUsername,
+      content: clipped,
+      createdAt: msg.createdAt,
+    };
+    m = [clippedMsg];
+  }
+
+  return m;
+}
+
+function buildGenerateOptions(input: {
+  ollamaNumPredict?: number;
+  ollamaNumCtx?: number;
+  ollamaOptionsJson: Record<string, unknown>;
+}): Record<string, unknown> | undefined {
+  const opts: Record<string, unknown> = { ...input.ollamaOptionsJson };
+  if (input.ollamaNumPredict !== undefined) {
+    opts["num_predict"] = input.ollamaNumPredict;
+  }
+  if (input.ollamaNumCtx !== undefined) {
+    opts["num_ctx"] = input.ollamaNumCtx;
+  }
+  return Object.keys(opts).length > 0 ? opts : undefined;
+}
+
 export function buildSummarizerPrompt(input: {
   channelLabel: string;
   summaryDate: string;
@@ -103,16 +171,40 @@ export async function summarizeMessages(input: {
   channelLabel: string;
   summaryDate: string;
   messages: StoredMessage[];
+  summaryMaxMessages?: number;
+  summaryMaxTranscriptChars?: number;
+  ollamaNumPredict?: number;
+  ollamaNumCtx?: number;
+  ollamaOptionsJson: Record<string, unknown>;
 }): Promise<StructuredSummary> {
+  const forPrompt = truncateMessagesForSummarization(
+    input.messages,
+    input.summaryMaxMessages,
+    input.summaryMaxTranscriptChars,
+  );
+
+  if (forPrompt.length < input.messages.length) {
+    console.log(
+      `[SummaryBot] Transcript truncated for model: ${input.messages.length} → ${forPrompt.length} messages`,
+    );
+  }
+
   const prompt = buildSummarizerPrompt({
     channelLabel: input.channelLabel,
     summaryDate: input.summaryDate,
-    messages: input.messages,
+    messages: forPrompt,
+  });
+
+  const options = buildGenerateOptions({
+    ollamaNumPredict: input.ollamaNumPredict,
+    ollamaNumCtx: input.ollamaNumCtx,
+    ollamaOptionsJson: input.ollamaOptionsJson,
   });
 
   const response = await ollamaGenerate(input.ollamaBaseUrl, {
     model: input.ollamaModel,
     prompt,
+    ...(options ? { options } : {}),
   });
 
   const text = typeof response.response === "string" ? response.response : "";
